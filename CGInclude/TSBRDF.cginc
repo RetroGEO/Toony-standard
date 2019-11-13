@@ -157,6 +157,7 @@ float4 TS_BRDF(BRDFData i)
 		    if(!any(indirectSpecular)) indirectSpecular = i.customIndirect*min(lightColGrey,1);
         }
         float grazingTerm = saturate(1-i.roughness + (1 - oneMinusReflectivity));
+        if(!_EmissiveRim) grazingTerm = saturate(1-i.roughness + (1 - oneMinusReflectivity)) * dots.NdotL + .3;
 	
         if(_RimLightOn)
         {
