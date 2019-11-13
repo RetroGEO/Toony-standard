@@ -130,7 +130,7 @@ float4 FragmentFunction (FragmentData i) : SV_TARGET
 			customIndirect=matcap*occlusion; 
 		}
 
-		else if(_IndirectSpecular==2)
+		else if(_IndirectSpecular==2 || _IndirectSpecular==0)
 		{
 			float3 cubemap = texCUBElod(_Cubemap, half4(worldRefl.xyz, remap(roughness, 1, 0, 5, 0))).rgb;
 			customIndirect=cubemap*occlusion;
