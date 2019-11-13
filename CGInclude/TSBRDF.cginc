@@ -139,12 +139,12 @@ float4 TS_BRDF(BRDFData i)
     //
         //indirect specular is added only on the base pass
         #if defined(UNITY_PASS_FORWARDBASE)
+	half lightColGrey = max((lightCol.r + lightCol.g + lightCol.b) / 3, (indirectDiffuse.r + indirectDiffuse.g + indirectDiffuse.b) / 3);
         UNITY_BRANCH
         if (i.indirectSpecular>0)
         {
             //using the fake specular probe toned down based on the average light, it's not phisically accurate
             //but having a probe that reflects arbitrary stuff isn't accurate to begin with
-            half lightColGrey = max((lightCol.r + lightCol.g + lightCol.b) / 3, (indirectDiffuse.r + indirectDiffuse.g + indirectDiffuse.b) / 3);
             indirectSpecular=i.customIndirect*min(lightColGrey,1);
         }
         else
@@ -154,9 +154,18 @@ float4 TS_BRDF(BRDFData i)
 		    envData.roughness = baseRoughness;
 		    envData.reflUVW = BoxProjectedCubemapDirection(i.dir.reflect, i.worldPos, unity_SpecCube0_ProbePosition, unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax);
 		    indirectSpecular = Unity_GlossyEnvironment(UNITY_PASS_TEXCUBE(unity_SpecCube0), unity_SpecCube0_HDR, envData);
+		    if(!any(indirectSpecular)) indirectSpecular = i.customIndirect*min(lightColGrey,1);
         }
         float grazingTerm = saturate(1-i.roughness + (1 - oneMinusReflectivity));
-        indirectSpecular*=FresnelLerp(specColor, grazingTerm, dots.NdotV);
+	
+        if(_RimLightOn)
+        {
+            indirectSpecular*=FresnelLerp(specColor, grazingTerm *_RimIntensity, smoothstep(remap(_RimSharpness, 1,0,0.5,0),1-remap(_RimSharpness, 1,0,0.5,0),dots.NdotV / remap(_RimStrength, 1,0,2,0)));
+        }
+        if(any(_RimColor))
+        {
+            indirectSpecular*=FresnelLerp(specColor, grazingTerm, dots.NdotV);
+        }
         #endif
     //
     //End indirect specular calculation
