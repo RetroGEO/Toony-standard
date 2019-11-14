@@ -235,11 +235,11 @@ namespace Cibbi.ToonyStandard
             // Creates a web request to the github api dependent to the update stream currently selected
             if(updateStream==UpdateStream.Beta)
             {
-                request= new UnityWebRequest("https://api.github.com/repos/Cibbi/Toony-standard/commits/master");
+                request= new UnityWebRequest("https://api.github.com/repos/RetroGEO/Toony-standard/commits/master");
             }
             else
             {
-                request= new UnityWebRequest("https://api.github.com/repos/Cibbi/Toony-standard/releases/latest");
+                request= new UnityWebRequest("https://api.github.com/repos/RetroGEO/Toony-standard/releases/latest");
             }
             request.method=UnityWebRequest.kHttpVerbGET;
             response = new DownloadHandlerBuffer();
@@ -306,7 +306,7 @@ namespace Cibbi.ToonyStandard
                 // Creates a web request to the github repository based on the selected update stream
                 if(updateStream==UpdateStream.Beta)
                 {
-                    request = new UnityWebRequest("https://github.com/Cibbi/Toony-standard/archive/"+githubBetaJSON.sha+".zip");        
+                    request = new UnityWebRequest("https://github.com/RetroGEO/Toony-standard/archive/"+githubBetaJSON.sha+".zip");        
                     file= new DownloadHandlerFile(Application.dataPath+"/toonyStandard.zip");
                 }
                 else
