@@ -139,12 +139,12 @@ float4 TS_BRDF(BRDFData i)
     //
         //indirect specular is added only on the base pass
         #if defined(UNITY_PASS_FORWARDBASE)
-	half lightColGrey = max((lightCol.r + lightCol.g + lightCol.b) / 3, (indirectDiffuse.r + indirectDiffuse.g + indirectDiffuse.b) / 3);
+		half lightColGrey = max((lightCol.r + lightCol.g + lightCol.b) / 3, (indirectDiffuse.r + indirectDiffuse.g + indirectDiffuse.b) / 3);
         UNITY_BRANCH
         if (i.indirectSpecular>0)
         {
             //using the fake specular probe toned down based on the average light, it's not phisically accurate
-            //but having a probe that reflects arbitrary stuff isn't accurate to begin with
+            //but having a probe that reflects arbitrary stuff isn't accurate to begin with            
             indirectSpecular=i.customIndirect*min(lightColGrey,1);
         }
         else
@@ -154,7 +154,6 @@ float4 TS_BRDF(BRDFData i)
 		    envData.roughness = baseRoughness;
 		    envData.reflUVW = BoxProjectedCubemapDirection(i.dir.reflect, i.worldPos, unity_SpecCube0_ProbePosition, unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax);
 		    indirectSpecular = Unity_GlossyEnvironment(UNITY_PASS_TEXCUBE(unity_SpecCube0), unity_SpecCube0_HDR, envData);
-		    if(!any(indirectSpecular)) indirectSpecular = i.customIndirect*min(lightColGrey,1);
         }
         float grazingTerm = saturate(1-i.roughness + (1 - oneMinusReflectivity));
         if(!_EmissiveRim) grazingTerm = saturate(1-i.roughness + (1 - oneMinusReflectivity)) * dots.NdotL + .3;

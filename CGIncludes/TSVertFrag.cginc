@@ -128,7 +128,7 @@ float4 FragmentFunction (FragmentData i) : SV_TARGET
 		{
 			float3 matcap =lerp(tex2D(_Matcap,float2(.5,.5)),tex2Dlod(_Matcap , half4( remap(worldRefl.xy,-1,1,0.1,0.9),0, remap(roughness, 1, 0, 5, 0))).rgb,1-roughness);
 			customIndirect=matcap*occlusion; 
-		}
+		}	
 		//Will fall back to cubemap from slot if probe is selected and no probe is present.
 		else if(_IndirectSpecular==2 || _IndirectSpecular==0)
 		{

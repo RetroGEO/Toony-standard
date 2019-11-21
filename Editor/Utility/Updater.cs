@@ -28,6 +28,7 @@ namespace Cibbi.ToonyStandard
         Fetching,
         Ready,
         UpToDate,
+        doNotUpdate,
         Downloading,
         Downloaded,
         Error
@@ -56,6 +57,8 @@ namespace Cibbi.ToonyStandard
         Texture2D icon;
 
         Vector2 MainAreaScrollPos;
+
+        bool isManualUpdate = false;
         /// <summary>
         /// Constructor for the TSUpdater class
         /// </summary>
@@ -76,6 +79,7 @@ namespace Cibbi.ToonyStandard
                 local.beta=true;
                 local.betaSha="";
                 local.version="beta";
+                local.lastCheck = DateTime.Now.ToString();
                 File.WriteAllText(TSConstants.LocalJSONPath,JsonUtility.ToJson(local));
             }
 
@@ -127,7 +131,8 @@ namespace Cibbi.ToonyStandard
             {
                 case UpdaterState.Waiting:
                     if(GUILayout.Button("Check for Update"))
-                    {     
+                    {
+                        isManualUpdate = true;
                         StartCoroutine(CheckForUpdate());         
                     }
                     break;
@@ -157,6 +162,7 @@ namespace Cibbi.ToonyStandard
                         EditorGUILayout.EndScrollView();
                         EditorGUILayout.EndVertical();
                     }
+                    isManualUpdate = false;
                     if(GUILayout.Button("Update"))
                     {     
                         StartCoroutine(DownloadUpdate());         
@@ -213,42 +219,53 @@ namespace Cibbi.ToonyStandard
                 local=JsonUtility.FromJson<LocalVersionJSON>(File.ReadAllText(Application.dataPath+"/DevCheck.json"));
                 if(local.version.Equals("dev"))
                 {
-                    state=UpdaterState.UpToDate;
+                    state = UpdaterState.doNotUpdate;
                     yield break;
                 }
-                local=null;
+                local = null;
             }
             // Checks if the version json is present and creates a new one that will trigger an update if not present
             if(File.Exists(TSConstants.LocalJSONPath))
             { 
-                local=JsonUtility.FromJson<LocalVersionJSON>(File.ReadAllText(TSConstants.LocalJSONPath));
+                local = JsonUtility.FromJson<LocalVersionJSON>(File.ReadAllText(TSConstants.LocalJSONPath));
             }
             else
             {
                 local = new LocalVersionJSON();
-                local.beta=true;
-                local.betaSha="";
-                local.version="release";
-                File.WriteAllText(TSConstants.LocalJSONPath,JsonUtility.ToJson(local));
+                local.beta = true;
+                local.betaSha = "";
+                local.version = "release";
+                local.lastCheck = DateTime.Now.AddDays(-2).ToString();
+                File.WriteAllText(TSConstants.LocalJSONPath, JsonUtility.ToJson(local));
+            }
+            if(local.lastCheck=="")
+            {
+                local.lastCheck = DateTime.Now.AddDays(-2).ToString();
+            }
+            // If it was checked recently, do not update it
+            if(DateTime.Parse(local.lastCheck).AddDays(1)>DateTime.Now && !isManualUpdate) 
+            {
+                state = UpdaterState.doNotUpdate; 
+                yield break;
             }
             
             // Creates a web request to the github api dependent to the update stream currently selected
-            if(updateStream==UpdateStream.Beta)
+            if(updateStream == UpdateStream.Beta)
             {
-                request= new UnityWebRequest("https://api.github.com/repos/RetroGEO/Toony-standard/commits/master");
+                request = new UnityWebRequest("https://api.github.com/repos/RetroGEO/Toony-standard/commits/master");
             }
             else
             {
-                request= new UnityWebRequest("https://api.github.com/repos/RetroGEO/Toony-standard/releases/latest");
+                request = new UnityWebRequest("https://api.github.com/repos/RetroGEO/Toony-standard/releases/latest");
             }
-            request.method=UnityWebRequest.kHttpVerbGET;
-            response = new DownloadHandlerBuffer();
+            request.method = UnityWebRequest.kHttpVerbGET;
+            response = new DownloadHandlerBuffer(); 
             request.downloadHandler = response;
             request.SendWebRequest();
             state = UpdaterState.Fetching;
             // Main check cycle that waits for a response from the api, execution of this part is paused every cycle for 0.5 seconds in order to avoid
             // to block the normal window execution
-            while(state == UpdaterState.Fetching)
+            while(state == UpdaterState.Fetching) 
             {
                 yield return 0.5f;
                 // Executed if the request got an error response
@@ -260,10 +277,10 @@ namespace Cibbi.ToonyStandard
                 // Executed if the request is done
                 if(request.isDone)
                 {   
-                    if(updateStream==UpdateStream.Beta)
+                    if(updateStream == UpdateStream.Beta)
                     {
                         githubBetaJSON=JsonUtility.FromJson<GithubCommitJSON>(response.text);
-                        if(local.beta&&local.betaSha==githubBetaJSON.sha)
+                        if(local.beta&&local.betaSha == githubBetaJSON.sha)
                         {
                             state=UpdaterState.UpToDate;
                         }
@@ -290,6 +307,9 @@ namespace Cibbi.ToonyStandard
                             state=UpdaterState.Ready;
                         }
                     }
+                    // Update the last check time
+                    local.lastCheck = DateTime.Now.ToString();
+                    File.WriteAllText(TSConstants.LocalJSONPath,JsonUtility.ToJson(local));
                     
                 }
             }
@@ -361,6 +381,7 @@ namespace Cibbi.ToonyStandard
                             local.beta=true;
                             local.betaSha=githubBetaJSON.sha;
                             local.version="beta";
+                            local.lastCheck = DateTime.Now.ToString();
                             File.WriteAllText(TSConstants.LocalJSONPath,JsonUtility.ToJson(local));
                             // The asset database is refreshed to be sure that the zip file is actually detected from the asset database for its deletion
                             File.Delete(Application.dataPath+"/toonyStandard.zip");
@@ -455,6 +476,7 @@ namespace Cibbi.ToonyStandard
         public string version;
         public bool beta;
         public string betaSha;
+        public string lastCheck;
     }
 
     /// <summary>

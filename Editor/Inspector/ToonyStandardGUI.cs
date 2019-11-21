@@ -28,6 +28,7 @@ namespace Cibbi.ToonyStandard
             MaterialProperty _DetailMapOn;
             MaterialProperty _SSSOn;
             MaterialProperty _StencilOn;
+            MaterialProperty _OutlineOn;
 
             MaterialProperty _ToonRampBox;
             MaterialProperty _RimLightBox;
@@ -35,6 +36,7 @@ namespace Cibbi.ToonyStandard
             MaterialProperty _DetailBox;
             MaterialProperty _SSSBox;
             MaterialProperty _StencilBox;
+            MaterialProperty _OutlineBox;
 
             MainSection main;
             BasicMainSection basicMain;
@@ -88,11 +90,10 @@ namespace Cibbi.ToonyStandard
                     main = new MainSection(properties, inspectorLevel, packer, this);
                     break;
             }
-
             foreach (Material mat in FindProperty("_Mode", properties).targets)
             {
                 // Setup various keyword based settings
-                SetupMaterialWithBlendMode(mat, (BlendMode)mat.GetFloat("_Mode"));
+                SetupMaterialWithBlendMode(mat, (BlendMode)mat.GetFloat("_Mode"), mat.GetFloat("_OutlineOn")>0);
 
                 // Setup emission
                 MaterialEditor.FixupEmissiveFlag(mat);
@@ -111,10 +112,11 @@ namespace Cibbi.ToonyStandard
             GenerateRampMinMax(properties);
 
             // Add sections based on the inspector level
-            group=new OrderedSectionGroup();
+            group = new OrderedSectionGroup();
             if(inspectorLevel==InspectorLevel.Basic)
             {
                 group.addSection(new BasicSpecularSection(properties, TSFunctions.BooleanFloat(_SpecularBox.floatValue), TSFunctions.BooleanFloat(_SpecularOn.floatValue)));
+                group.addSection(new OutlineSection(properties, TSFunctions.BooleanFloat(_OutlineBox.floatValue), TSFunctions.BooleanFloat(_OutlineOn.floatValue)));
             }
             else
             {
@@ -123,6 +125,7 @@ namespace Cibbi.ToonyStandard
                 group.addSection(new SpecularSection(properties, inspectorLevel, this, TSFunctions.BooleanFloat(_SpecularBox.floatValue), TSFunctions.BooleanFloat(_SpecularOn.floatValue)));
                 group.addSection(new DetailSection(properties, TSFunctions.BooleanFloat(_DetailBox.floatValue), TSFunctions.BooleanFloat(_DetailMapOn.floatValue)));
                 group.addSection(new SubsurfaceSection(properties, TSFunctions.BooleanFloat(_SSSBox.floatValue), TSFunctions.BooleanFloat(_SSSOn.floatValue)));
+                group.addSection(new OutlineSection(properties, TSFunctions.BooleanFloat(_OutlineBox.floatValue), TSFunctions.BooleanFloat(_OutlineOn.floatValue)));
             }   
 
             if(inspectorLevel == InspectorLevel.Expert)
@@ -198,7 +201,7 @@ namespace Cibbi.ToonyStandard
                 main.DrawSection(materialEditor);
             }     
             group.DrawSectionsList(materialEditor,properties);
-            group.DrawAddButton();
+            group.DrawAddButton(properties);
 
             TSFunctions.DrawFooter();
         }
@@ -215,6 +218,7 @@ namespace Cibbi.ToonyStandard
             _DetailMapOn = FindProperty("_DetailMapOn", properties);
             _SSSOn = FindProperty("_SSSOn", properties);
             _StencilOn = FindProperty("_StencilOn", properties);
+            _OutlineOn = FindProperty("_OutlineOn", properties);
 
             _ToonRampBox = FindProperty("_ToonRampBox", properties);
             _RimLightBox = FindProperty("_RimLightBox", properties);
@@ -222,6 +226,7 @@ namespace Cibbi.ToonyStandard
             _DetailBox = FindProperty("_DetailBox", properties);
             _SSSBox = FindProperty("_SSSBox", properties);
             _StencilBox = FindProperty("_StencilBox", properties);
+            _OutlineBox = FindProperty("_OutlineBox", properties);
         }
 
         public void GenerateRampMinMax(MaterialProperty[] properties)
@@ -245,30 +250,20 @@ namespace Cibbi.ToonyStandard
                         if(min.b > c.b) {min.b = c.b;}
                         if(max.r < c.r) {max.r = c.r;}
                         if(max.g < c.g) {max.g = c.g;}
-                        if(max.b < c.b) {max.b = c.b;}
-                        
+                        if(max.b < c.b) {max.b = c.b;}                       
                     }
-                    //Debug.Log("1: m "+min+" max "+max);
-                    //min = ramp.GetPixel(0, 0);
-                    //max = ramp.GetPixel(ramp.width, ramp.height);
-                    //Debug.Log("2: m "+min+" max "+max);
-                    #else
-
-                    
+                    #else          
                     try
                     {
-                    foreach (Color c in ramp.GetPixels())
-                    {
-                        if(min.r > c.r) {min.r = c.r;}
-                        if(min.g > c.g) {min.g = c.g;}
-                        if(min.b > c.b) {min.b = c.b;}
-                        if(max.r < c.r) {max.r = c.r;}
-                        if(max.g < c.g) {max.g = c.g;}
-                        if(max.b < c.b) {max.b = c.b;}
-                        
-                    }
-                        //min = ramp.GetPixel(0, 0);
-                        //max = ramp.GetPixel(ramp.width, ramp.height);
+                        foreach (Color c in ramp.GetPixels())
+                        {
+                            if(min.r > c.r) {min.r = c.r;}
+                            if(min.g > c.g) {min.g = c.g;}
+                            if(min.b > c.b) {min.b = c.b;}
+                            if(max.r < c.r) {max.r = c.r;}
+                            if(max.g < c.g) {max.g = c.g;}
+                            if(max.b < c.b) {max.b = c.b;}                           
+                        }
                     }
                     catch(UnityException)
                     {
@@ -280,11 +275,8 @@ namespace Cibbi.ToonyStandard
                             if(min.b > c.b) {min.b = c.b;}
                             if(max.r < c.r) {max.r = c.r;}
                             if(max.g < c.g) {max.g = c.g;}
-                            if(max.b < c.b) {max.b = c.b;}
-                            
+                            if(max.b < c.b) {max.b = c.b;}                         
                         }
-                        //min = ramp.GetPixel(0, 0);
-                        //max = ramp.GetPixel(ramp.width, ramp.height);
                     }
                     #endif
                 }
@@ -402,35 +394,36 @@ namespace Cibbi.ToonyStandard
             }
         }
 
-        public static void SetupMaterialWithBlendMode(Material material, BlendMode blendMode)
+        public static void SetupMaterialWithBlendMode(Material material, BlendMode blendMode, bool outlined)
         {
+            string shaderName="";
             switch (blendMode)
             {
                 case BlendMode.Opaque:
-                    material.shader = Shader.Find("Hidden/Cibbis shaders/toony standard/Opaque");
-                    material.DisableKeyword("_ALPHATEST_ON");
-                    material.DisableKeyword("_ALPHABLEND_ON");
-                    material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                    shaderName = "Hidden/Cibbis shaders/toony standard/Opaque";
                     break;
                 case BlendMode.Cutout:
-                    material.shader = Shader.Find("Hidden/Cibbis shaders/toony standard/Cutout");
-                    material.EnableKeyword("_ALPHATEST_ON");
-                    material.DisableKeyword("_ALPHABLEND_ON");
-                    material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                    shaderName = "Hidden/Cibbis shaders/toony standard/Cutout";
                     break;
                 case BlendMode.Fade:
-                    material.shader = Shader.Find("Hidden/Cibbis shaders/toony standard/Fade");
-                    material.DisableKeyword("_ALPHATEST_ON");
-                    material.EnableKeyword("_ALPHABLEND_ON");
-                    material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                    shaderName = "Hidden/Cibbis shaders/toony standard/Fade";
+                    outlined = false;
                     break;
                 case BlendMode.Transparent:
-                    material.shader = Shader.Find("Hidden/Cibbis shaders/toony standard/Transparent");
-                    material.DisableKeyword("_ALPHATEST_ON");
-                    material.DisableKeyword("_ALPHABLEND_ON");
-                    material.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+                    shaderName = "Hidden/Cibbis shaders/toony standard/Transparent";
+                    outlined = false;
                     break;
             }
+            if(outlined)
+            {
+                shaderName += "Outlined";
+                
+            }
+            else
+            {
+                material.SetFloat("_OutlineOn", 0);
+            }
+             material.shader = Shader.Find(shaderName);
         }  
     }
 }
